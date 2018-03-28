@@ -23,6 +23,7 @@
 #include "sr_arpcache.h"
 #include "sr_utils.h"
 #include "stdlib.h"
+#include "sr_nat.h"
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -40,6 +41,9 @@ void sr_init(struct sr_instance* sr)
     /* Initialize cache and cache cleanup thread */
     sr_arpcache_init(&(sr->cache));
 
+    if (sr->mode == 1) {
+      sr_nat_init(&(sr->nat));
+    }
     pthread_attr_init(&(sr->attr));
     pthread_attr_setdetachstate(&(sr->attr), PTHREAD_CREATE_JOINABLE);
     pthread_attr_setscope(&(sr->attr), PTHREAD_SCOPE_SYSTEM);

@@ -32,6 +32,7 @@
 #include "sr_dumper.h"
 #include "sr_router.h"
 #include "sr_rt.h"
+#include "sr_nat.h"
 
 extern char* optarg;
 
@@ -66,6 +67,12 @@ int main(int argc, char **argv)
     unsigned int topo = DEFAULT_TOPO;
     char *logfile = 0;
     struct sr_instance sr;
+    /* nat variables */
+    unsigned int mode = 0; //nat is mode = 1
+    unsigned int icmp_query_timeout = 60;
+    unsigned int tcp_establish_timeout = 7440;
+    unsigned int tcp_transit_timeout = 300;
+    struct sr_nat nat;
 
     printf("Using %s\n", VERSION_INFO);
 
@@ -101,11 +108,34 @@ int main(int argc, char **argv)
             case 'T':
                 template = optarg;
                 break;
+            /* if nat */
+            case 'n':
+              mode = 1;
+              break;
+            case 'I':
+              icmp_query_timeout = atoi((char *) optarg);
+              break;
+            case 'R':
+              tcp_transit_timeout = atoi((char *) optarg);
+              break;
+            case 'E':
+              tcp_establish_timeout = atoi((char *) optarg);
+              break;
+
         } /* switch */
     } /* -- while -- */
 
     /* -- zero out sr instance -- */
     sr_init_instance(&sr);
+
+    /* -- set up nat --*/
+    if (mode == 1){
+      nat.icmp_query_timeout = icmp_query_timeout;
+      nat.tcp_transit_timeout = tcp_transit_timeout;
+      nat.tcp_establish_timeout = tcp_establish_timeout;
+    }
+    sr.nat = nat;
+    sr.mode = mode;
 
     /* -- set up routing table from file -- */
     if(template == NULL) {

@@ -32,6 +32,10 @@ struct sr_nat_mapping {
 struct sr_nat {
   /* add any fields here */
   struct sr_nat_mapping *mappings;
+  unsigned int icmp_timeout;
+  unsigned int tcp_establish_timeout;
+  unsigned int tcp_transit_timeout;
+
 
   /* threading */
   pthread_mutex_t lock;
