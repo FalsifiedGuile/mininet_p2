@@ -41,9 +41,11 @@ void sr_init(struct sr_instance* sr)
     /* Initialize cache and cache cleanup thread */
     sr_arpcache_init(&(sr->cache));
 
+    /* Intialize nat */
     if (sr->mode == 1) {
       sr_nat_init(&(sr->nat));
     }
+
     pthread_attr_init(&(sr->attr));
     pthread_attr_setdetachstate(&(sr->attr), PTHREAD_CREATE_JOINABLE);
     pthread_attr_setscope(&(sr->attr), PTHREAD_SCOPE_SYSTEM);
@@ -105,9 +107,52 @@ void sr_handlepacket(struct sr_instance* sr,
     }
   }
   if(pkt_type == ethertype_ip){
-	handle_ip_request(sr,len,packet,interface);
+    if (mode == 0){
+      handle_ip_request(sr,len,packet,interface);
+    } else if (mode == 1){
+      handle_nat_ip_request(sr,len,packet,interface);
+    } else{
+      printf("Error invalid mode variable of %d\n", mode);
+    }
+
   }
 }
+/* Nat function */
+void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t * packet/* lent */, char* interface/* lent */){
+  /*Check if ICMP or TCP*/
+  uint8_t* p = (packet + sizeof(sr_ethernet_hdr_t));
+  sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) p;
+
+  struct sr_if* dest_interface = get_interface(sr, ip_header->ip_dst);
+  /*Packet is destined to a router interface*/
+  uint8_t ip_type = ip_protocol(p);
+  if(ip_type == ip_protocal_icmp){
+    /* handle_nat_icmp stuff */
+    handle_nat_icmp(sr, len, packet, interface);
+  } else if (ip_type = ip_protocol_tcp){
+    /* handle_nat_tcp */
+  } else {
+    printf("Error invalid packet\n", mode);
+    /* drop packet */
+    return;
+  }
+  /*
+  If packet is outbound (internal -> external)
+  	insert or lookup unique mapping
+  else:
+  	if no mapping and not a SYN (for simultaneous open)
+  		drop packet
+    Rewrite IP src (dst) for outgoing (incoming) packets
+    Rewrite ICMP ID / TCP port
+    Update relevant checksums
+    Route packet
+    */
+}
+
+void handle_nat_icmp(struct sr_instance* sr, unsigned int len, uint8_t * packet/* lent */, char* interface/* lent */){
+    /* modify packet for nat */
+}
+
 void router_arp_reply(struct sr_instance* sr,
           uint8_t * packet/* lent */,
           unsigned int len,
@@ -181,10 +226,6 @@ void send_arp_reply(struct sr_instance* sr,
 
 }
 
-
-
-
-
 /* modified version of print_addr_ip_int in sr_utils.c */
 void addr_ip_str(uint32_t ip, char* buffer) {
   sprintf(
@@ -194,7 +235,6 @@ void addr_ip_str(uint32_t ip, char* buffer) {
 
 void handle_ip_request(struct sr_instance* sr, unsigned int len, uint8_t * packet/* lent */, char* interface/* lent */){
         printf("IP packet recieved.\n");
-
         /*Construct payload and ip hdr*/
         uint8_t* p = (packet + sizeof(sr_ethernet_hdr_t));
         sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) p;
