@@ -136,6 +136,9 @@ int main(int argc, char **argv)
     }
     sr.nat = nat;
     sr.mode = mode;
+    /* idea here is to have nat linked back to sr so we can access sr
+    by just passing nat, this idea may not work out */
+    //sr.nat->sr = &sr;
 
     /* -- set up routing table from file -- */
     if(template == NULL) {

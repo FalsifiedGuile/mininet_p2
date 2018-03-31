@@ -35,6 +35,9 @@ struct sr_nat {
   unsigned int icmp_timeout;
   unsigned int tcp_establish_timeout;
   unsigned int tcp_transit_timeout;
+  /* sketchy idea for nat to point back to sr */
+  // struct sr *sr;
+
 
 
   /* threading */
@@ -62,7 +65,8 @@ struct sr_nat_mapping *sr_nat_lookup_internal(struct sr_nat *nat,
 /* Insert a new mapping into the nat's mapping table.
    You must free the returned structure if it is not NULL. */
 struct sr_nat_mapping *sr_nat_insert_mapping(struct sr_nat *nat,
-  uint32_t ip_int, uint16_t aux_int, sr_nat_mapping_type type );
+  uint32_t ip_int, uint16_t aux_int, uint32_t ip_ext, uint16_t aux_ext,
+   sr_nat_mapping_type type );
 
 
 #endif

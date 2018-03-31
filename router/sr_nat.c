@@ -1,8 +1,15 @@
 
 #include <signal.h>
 #include <assert.h>
-#include "sr_nat.h"
 #include <unistd.h>
+
+#include "sr_arpcache.h"
+#include "sr_if.h"
+#include "sr_nat.h"
+#include "sr_router.h"
+#include "sr_rt.h"
+#include "sr_utils.h"
+
 
 int sr_nat_init(struct sr_nat *nat) { /* Initializes the nat */
 
@@ -89,12 +96,33 @@ struct sr_nat_mapping *sr_nat_lookup_internal(struct sr_nat *nat,
    Actually returns a copy to the new mapping, for thread safety.
  */
 struct sr_nat_mapping *sr_nat_insert_mapping(struct sr_nat *nat,
-  uint32_t ip_int, uint16_t aux_int, sr_nat_mapping_type type ) {
+  uint32_t ip_int, uint16_t aux_int, uint32_t ip_ext, uint16_t aux_ext,
+   sr_nat_mapping_type type) {
 
   pthread_mutex_lock(&(nat->lock));
 
   /* handle insert here, create a mapping, and then return a copy of it */
   struct sr_nat_mapping *mapping = NULL;
+  struct sr_nat_mapping *mapping_copy = NULL;
+  struct sr_rt *lpm = NULL;
+  time_t curtime = time(NULL);
+
+  mapping = malloc(sizeof(struct sr_nat_mapping));
+
+  /* set internal */
+  mapping->type = type;
+  mapping->ip_int = ip_int;
+  mapping->aux_int = aux_int;
+  mapping->last_updated = curtime;
+  mapping->conns = NULL; /* obviously due to no conns set*/
+
+  /* set external */
+  mapping->ip_ext = ip_ext;
+  mapping->aux_ext = aux_ext;
+
+  mapping_copy = malloc(sizeof(struct sr_nat_mapping));
+	memcpy(mapping_copy, mapping, sizeof(struct sr_nat_mapping));
+
 
   pthread_mutex_unlock(&(nat->lock));
   return mapping;
