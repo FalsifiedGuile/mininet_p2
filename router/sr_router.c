@@ -118,7 +118,8 @@ void sr_handlepacket(struct sr_instance* sr,
   }
 }
 /* Nat function */
-void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t * packet/* lent */, char* interface/* lent */){
+void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t *
+  packet/* lent */, char* interface/* lent */){
   /*Check if ICMP or TCP*/
   uint8_t* p = (packet + sizeof(sr_ethernet_hdr_t));
   sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) p;
@@ -126,9 +127,12 @@ void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t * p
   struct sr_if* dest_interface = get_interface(sr, ip_header->ip_dst);
   /*Packet is destined to a router interface*/
   uint8_t ip_type = ip_protocol(p);
+  
+  pkt_direction direction = get_pkt_direction(sr, ip_header->ip_dst);
+
   if(ip_type == ip_protocal_icmp){
     /* handle_nat_icmp stuff */
-    handle_nat_icmp(sr, len, packet, interface);
+    handle_nat_icmp(sr, len, packet, interface, direction);
   } else if (ip_type = ip_protocol_tcp){
     /* handle_nat_tcp */
   } else {
@@ -149,7 +153,8 @@ void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t * p
     */
 }
 
-void handle_nat_icmp(struct sr_instance* sr, unsigned int len, uint8_t * packet/* lent */, char* interface/* lent */){
+void handle_nat_icmp(struct sr_instance* sr, unsigned int len,
+  uint8_t * packet/* lent */, char* interface, pkt_direction direction){
     /* modify packet for nat */
 }
 

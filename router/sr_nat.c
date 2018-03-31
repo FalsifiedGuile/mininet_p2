@@ -152,3 +152,8 @@ struct sr_nat_mapping *sr_nat_insert_mapping(struct sr_nat *nat,
   pthread_mutex_unlock(&(nat->lock));
   return mapping;
 }
+
+/* return the direction of the packet in relation to NAT */
+pkt_direction get_pkt_direction(struct sr_instance* sr, uint32_t dest_ip){
+  /* do something */
+}
