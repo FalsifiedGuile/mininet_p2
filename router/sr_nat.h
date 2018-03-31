@@ -2,6 +2,11 @@
 #ifndef SR_NAT_TABLE_H
 #define SR_NAT_TABLE_H
 
+#define MIN_PORT 1024
+#define MAX_PORT_NUMBER 48127
+#define MAX_ICMP_ID_NUMBER 65535
+
+
 #include <inttypes.h>
 #include <time.h>
 #include <pthread.h>
@@ -38,6 +43,18 @@ struct sr_nat {
   /* sketchy idea for nat to point back to sr */
   // struct sr *sr;
 
+  /* pretty ugly way of implimentation
+    basically all everytime we open a new port use used_port_marker + 1
+    until its at AVALIBLE_PORTS then loop around ot beginning
+      Reminder to mark port_array[x] as
+      same idea with icmp_id_array
+  */
+
+  uint16_t port_array[MAX_PORT_NUMBER];
+  unsigned int used_port_marker;
+
+  uint16_t icmp_id_array[MAX_ICMP_ID_NUMBER];
+  unsigned int used_icmp_id_marker;
 
 
   /* threading */

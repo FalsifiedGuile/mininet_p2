@@ -136,6 +136,9 @@ int main(int argc, char **argv)
     }
     sr.nat = nat;
     sr.mode = mode;
+    
+    memset(sr.nat->port_array, 0, MAX_PORT_NUMBER);
+    memset(sr.nat->icmp_id_array, 0, MAX_ICMP_ID_NUMBER);
     /* idea here is to have nat linked back to sr so we can access sr
     by just passing nat, this idea may not work out */
     //sr.nat->sr = &sr;
