@@ -127,9 +127,11 @@ void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t *
   struct sr_if* dest_interface = get_interface(sr, ip_header->ip_dst);
   /*Packet is destined to a router interface*/
   uint8_t ip_type = ip_protocol(p);
-  
-  pkt_direction direction = get_pkt_direction(sr, ip_header->ip_dst);
-
+  pkt_direction direction = get_pkt_direction(sr, ip_header->ip_dst, ip_header->ip_src);
+  if (direction == pkt_drop){
+    printf("Pkt not for us \n", mode);
+    return;
+  }
   if(ip_type == ip_protocal_icmp){
     /* handle_nat_icmp stuff */
     handle_nat_icmp(sr, len, packet, interface, direction);
@@ -152,12 +154,69 @@ void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t *
     Route packet
     */
 }
-
-void handle_nat_icmp(struct sr_instance* sr, unsigned int len,
-  uint8_t * packet/* lent */, char* interface, pkt_direction direction){
-    /* modify packet for nat */
+/* return the direction of the packet in relation to NAT */
+pkt_path get_pkt_direction(struct sr_instance* sr, uint32_t dest_ip, uint32_t src_ip){
+  /* do something */
+  //check if destination ip matches NAT eth2
+  struct sr_if *eth2 = NULL;
+  eth2 = sr_get_interface(sr, "eth2");
+  if (dest_ip == eth2->ip){
+    return pkt_incoming;
+  } else {
+    struct sr_rt* src_entry = longest_pf_match(src_ip, sr);
+    // check if actually outgoing
+    struct sr_rt* dest_entry = longest_pf_match(dest_ip, sr);
+    if (src_entry && !dest_entry){
+      return pkt_outgoing;
+    } else if (src_entry && dest_entry){
+      return pkt_inner;
+    }
+  }
+  return pkt_drop;
+  // if source is in NAT aka eth1
+  // its pkt_outgoing
 }
 
+void handle_nat_icmp(struct sr_instance* sr, unsigned int len,
+  uint8_t * packet/* lent */, char* interface, pkt_path direction){
+    /* modify packet for nat */
+    switch(direction){
+      case pkt_incoming:
+        handle_nat_icmp_incoming(sr, len, packet, interface);
+        break;
+      case pkt_outgoing:
+        handle_nat_icmp_outgoing(sr, len, packet, interface);
+        break;
+    }
+    if (direction != pkt_inner){
+      ip_header->ip_sum = 0;
+      ip_header->ip_sum = cksum(ip_header, sizeof(struct sr_ip_hdr));
+    }
+    handle_ip_request(sr, len, packet, interface);
+}
+
+void handle_nat_icmp_incoming(struct sr_instance* sr, unsigned int len, uint8_t * packet,
+  char* interface){
+    uint8_t* p = (packet + sizeof(sr_ethernet_hdr_t));
+    sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) p;
+    sr_icmp_hdr_t* icmp_header = (sr_icmp_hdr_t*)(packet + sizeof(sr_ip_hdr_t) + sizeof(sr_ethernet_hdr_t));
+    struct sr_nat_mapping *nat_lookup = sr_nat_lookup_external(&(sr->nat), icmp_header->icmp_id, nat_mapping_icmp);
+    if (!nat_lookup){
+      if(icmp_header->icmp_type == 0)
+      ip_header->ip_dst = nat_lookup->ip_int;
+      icmp_header->icmp_id = nat_lookup->aux_int;
+      icmp_header->icmp_sum = 0;
+      icmp_header->icmp_sum = cksum(icmp_header, sizeof(sr_icmp_t3_hdr_t));
+    }
+}
+
+void handle_nat_icmp_outgoing(struct sr_instance* sr, unsigned int len, uint8_t * packet,
+  char* interface){
+    uint8_t* p = (packet + sizeof(sr_ethernet_hdr_t));
+    sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) p;
+    sr_icmp_hdr_t* icmp_header = (sr_icmp_hdr_t*)(packet + sizeof(sr_ip_hdr_t) + sizeof(sr_ethernet_hdr_t));
+    //struct sr_nat_mapping *nat_lookup = sr_nat_lookup_external(&(sr->nat), icmp_header->icmp_id, );
+}
 void router_arp_reply(struct sr_instance* sr,
           uint8_t * packet/* lent */,
           unsigned int len,

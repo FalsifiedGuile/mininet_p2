@@ -17,11 +17,6 @@ typedef enum {
   /* nat_mapping_udp, */
 } sr_nat_mapping_type;
 
-typedef enum {
-  pkt_outgoing;
-  pkt_incoming;
-} pkt_direction;
-
 struct sr_nat_connection {
   /* add TCP connection state data members here */
 

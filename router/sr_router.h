@@ -18,6 +18,13 @@
 #include "stdlib.h"
 #include "sr_nat.h"
 
+typedef enum {
+  pkt_outgoing;
+  pkt_incoming;
+  pkt_inner;
+  pkt_drop;
+} pkt_path;
+
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_
 #define Debug(x, args...) printf(x, ## args)
@@ -88,4 +95,11 @@ struct sr_if* get_interface(struct sr_instance*, uint32_t);
 void handle_icmp_unreachable(struct sr_instance*, unsigned int, uint8_t*, uint8_t, uint8_t);
 void router_echo_icmp_request (struct sr_instance* sr, unsigned int len, uint8_t* packet);
 
+/* custom nat methods */
+pkt_direction get_pkt_direction(struct sr_instance* sr, uint32_t dest_ip, uint32_t src_ip);
+void handle_nat_icmp_incoming(struct sr_instance* sr, unsigned int len, uint8_t * packet,
+  char* interface);
+  void handle_nat_icmp_outgoing(struct sr_instance* sr, unsigned int len, uint8_t * packet,
+    char* interface);
+void handle_nat_icmp(struct sr_instance* sr, unsigned int len, uint8_t * packet/* lent */, char* interface, pkt_path direction);
 #endif /* SR_ROUTER_H */
