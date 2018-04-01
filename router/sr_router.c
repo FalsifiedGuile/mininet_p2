@@ -215,7 +215,9 @@ void handle_nat_icmp_outgoing(struct sr_instance* sr, unsigned int len, uint8_t 
     uint8_t* p = (packet + sizeof(sr_ethernet_hdr_t));
     sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) p;
     sr_icmp_hdr_t* icmp_header = (sr_icmp_hdr_t*)(packet + sizeof(sr_ip_hdr_t) + sizeof(sr_ethernet_hdr_t));
-    //struct sr_nat_mapping *nat_lookup = sr_nat_lookup_external(&(sr->nat), icmp_header->icmp_id, );
+    // struct sr_nat_mapping *nat_lookup = sr_nat_lookup_internal(&(sr->nat), icmp_header->icmp_id, );
+    // if null add insert it to NAT mapping
+    // if !null modify ip_dst, id, and ip_sum
 }
 void router_arp_reply(struct sr_instance* sr,
           uint8_t * packet/* lent */,
