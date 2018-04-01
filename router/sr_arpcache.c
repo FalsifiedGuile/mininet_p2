@@ -22,8 +22,9 @@ int handle_arpreq_pkt(struct sr_instance *sr, uint32_t arp_request_ip_dest, stru
 void handle_icmp_host_unreachable_pkt(struct sr_instance *sr, struct sr_packet *icmp_pkt);
 
 void sr_arpcache_sweepreqs(struct sr_instance *sr) {
-  printf("sr_arpcache_sweepreqs ---- \n");
   struct sr_arpreq *current_request, *next = NULL;
+  if ((current_request = sr->cache.requests) == NULL) {
+  }
   while(current_request) {
     printf("looking through requests ---- \n");
     next = current_request->next;
@@ -39,7 +40,7 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
 
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req){
   time_t now = time(NULL);
-  printf("handling time sent %d\n --------------", req->times_sent);
+  printf("handling arp req\n --------------");
   if (difftime(now, req->sent) > 1.0){
     if (req->times_sent >= 5){
        /* mMybe over allocation */
@@ -64,8 +65,6 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req){
       req->times_sent++;
     }
 
-  } else {
-    printf("diff time too short");
   }
 }
 
@@ -144,7 +143,7 @@ void handle_icmp_host_unreachable_pkt(struct sr_instance *sr, struct sr_packet *
   icmp_t3_hdr->icmp_sum = 0;
   icmp_t3_hdr->icmp_sum = cksum(icmp_t3_hdr, sizeof(struct sr_icmp_t3_hdr));
 
-  sr_send_packet(sr, imcp_unknown_host_pkt, pkt_len, original_if_dest);
+  sr_send_packet(sr, imcp_unknown_host_pkt, pkt_len, icmp_pkt->iface);
 
 }
 

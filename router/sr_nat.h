@@ -38,10 +38,10 @@ struct sr_nat {
   /* add any fields here */
   struct sr_nat_mapping *mappings;
   unsigned int icmp_timeout;
+  unsigned int icmp_query_timeout;
   unsigned int tcp_establish_timeout;
   unsigned int tcp_transit_timeout;
   /* sketchy idea for nat to point back to sr */
-  // struct sr *sr;
 
   /* pretty ugly way of implimentation
     basically all everytime we open a new port use used_port_marker + 1
@@ -85,5 +85,4 @@ struct sr_nat_mapping *sr_nat_insert_mapping(struct sr_nat *nat,
   uint32_t ip_int, uint16_t aux_int, uint32_t ip_ext, uint16_t aux_ext,
    sr_nat_mapping_type type );
 
-pkt_direction get_pkt_direction(struct sr_instance* sr, uint32_t);
 #endif

@@ -20,10 +20,11 @@
 #include "sr_rt.h"
 #include "sr_router.h"
 #include "sr_protocol.h"
+#include "sr_nat.h"
 #include "sr_arpcache.h"
 #include "sr_utils.h"
 #include "stdlib.h"
-#include "sr_nat.h"
+
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -40,11 +41,6 @@ void sr_init(struct sr_instance* sr)
 
     /* Initialize cache and cache cleanup thread */
     sr_arpcache_init(&(sr->cache));
-
-    /* Intialize nat */
-    if (sr->mode == 1) {
-      sr_nat_init(&(sr->nat));
-    }
 
     pthread_attr_init(&(sr->attr));
     pthread_attr_setdetachstate(&(sr->attr), PTHREAD_CREATE_JOINABLE);
@@ -107,12 +103,12 @@ void sr_handlepacket(struct sr_instance* sr,
     }
   }
   if(pkt_type == ethertype_ip){
-    if (mode == 0){
+    if (sr->mode == 0){
       handle_ip_request(sr,len,packet,interface);
-    } else if (mode == 1){
+    } else if (sr->mode == 1){
       handle_nat_ip_request(sr,len,packet,interface);
     } else{
-      printf("Error invalid mode variable of %d\n", mode);
+      printf("Error invalid mode variable of %d\n", sr->mode);
     }
 
   }
@@ -127,18 +123,18 @@ void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t *
   struct sr_if* dest_interface = get_interface(sr, ip_header->ip_dst);
   /*Packet is destined to a router interface*/
   uint8_t ip_type = ip_protocol(p);
-  pkt_direction direction = get_pkt_direction(sr, ip_header->ip_dst, ip_header->ip_src);
+  pkt_path direction = get_pkt_direction(sr, ip_header->ip_dst, ip_header->ip_src);
   if (direction == pkt_drop){
-    printf("Pkt not for us \n", mode);
+    printf("Pkt not for us \n");
     return;
   }
-  if(ip_type == ip_protocal_icmp){
+  if(ip_type == ip_protocol_icmp){
     /* handle_nat_icmp stuff */
     handle_nat_icmp(sr, len, packet, interface, direction);
-  } else if (ip_type = ip_protocol_tcp){
+  } else if (ip_type == ip_protocol_tcp){
     /* handle_nat_tcp */
   } else {
-    printf("Error invalid packet\n", mode);
+    printf("Error invalid packet\n");
     /* drop packet */
     return;
   }
@@ -157,14 +153,14 @@ void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t *
 /* return the direction of the packet in relation to NAT */
 pkt_path get_pkt_direction(struct sr_instance* sr, uint32_t dest_ip, uint32_t src_ip){
   /* do something */
-  //check if destination ip matches NAT eth2
+  /* check if destination ip matches NAT eth2 */
   struct sr_if *eth2 = NULL;
   eth2 = sr_get_interface(sr, "eth2");
   if (dest_ip == eth2->ip){
     return pkt_incoming;
   } else {
     struct sr_rt* src_entry = longest_pf_match(src_ip, sr);
-    // check if actually outgoing
+    /* check if actually outgoing */
     struct sr_rt* dest_entry = longest_pf_match(dest_ip, sr);
     if (src_entry && !dest_entry){
       return pkt_outgoing;
@@ -173,13 +169,16 @@ pkt_path get_pkt_direction(struct sr_instance* sr, uint32_t dest_ip, uint32_t sr
     }
   }
   return pkt_drop;
-  // if source is in NAT aka eth1
-  // its pkt_outgoing
+  /* if source is in NAT aka eth1
+   its pkt_outgoing*/
 }
 
 void handle_nat_icmp(struct sr_instance* sr, unsigned int len,
   uint8_t * packet/* lent */, char* interface, pkt_path direction){
     /* modify packet for nat */
+    uint8_t* p = (packet + sizeof(sr_ethernet_hdr_t));
+    sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) p;
+
     switch(direction){
       case pkt_incoming:
         handle_nat_icmp_incoming(sr, len, packet, interface);
@@ -215,9 +214,9 @@ void handle_nat_icmp_outgoing(struct sr_instance* sr, unsigned int len, uint8_t 
     uint8_t* p = (packet + sizeof(sr_ethernet_hdr_t));
     sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) p;
     sr_icmp_hdr_t* icmp_header = (sr_icmp_hdr_t*)(packet + sizeof(sr_ip_hdr_t) + sizeof(sr_ethernet_hdr_t));
-    // struct sr_nat_mapping *nat_lookup = sr_nat_lookup_internal(&(sr->nat), icmp_header->icmp_id, );
-    // if null add insert it to NAT mapping
-    // if !null modify ip_dst, id, and ip_sum
+    /* struct sr_nat_mapping *nat_lookup = sr_nat_lookup_internal(&(sr->nat), icmp_header->icmp_id, );
+     if null add insert it to NAT mapping
+     if !null modify ip_dst, id, and ip_sum*/
 }
 void router_arp_reply(struct sr_instance* sr,
           uint8_t * packet/* lent */,
@@ -258,9 +257,9 @@ void send_arp_reply(struct sr_instance* sr,
     arp_hdr = (struct sr_arp_hdr*)(sizeof(struct sr_ethernet_hdr) + packet);
     dest_interface = sr_get_interface(sr, interface);
 
-    //if (dest_interface != 0){
+    if (dest_interface != 0){
       req = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
-    //}
+    }
 
 
     if(req != NULL) {

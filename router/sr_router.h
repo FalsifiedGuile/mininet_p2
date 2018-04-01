@@ -18,12 +18,6 @@
 #include "stdlib.h"
 #include "sr_nat.h"
 
-typedef enum {
-  pkt_outgoing;
-  pkt_incoming;
-  pkt_inner;
-  pkt_drop;
-} pkt_path;
 
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_
@@ -38,6 +32,13 @@ typedef enum {
 
 #define INIT_TTL 255
 #define PACKET_DUMP_SIZE 1024
+
+typedef enum {
+  pkt_outgoing,
+  pkt_incoming,
+  pkt_inner,
+  pkt_drop
+} pkt_path;
 
 /* forward declare */
 struct sr_if;
@@ -94,12 +95,19 @@ struct sr_rt* longest_pf_match(uint32_t, struct sr_instance*);
 struct sr_if* get_interface(struct sr_instance*, uint32_t);
 void handle_icmp_unreachable(struct sr_instance*, unsigned int, uint8_t*, uint8_t, uint8_t);
 void router_echo_icmp_request (struct sr_instance* sr, unsigned int len, uint8_t* packet);
+/* --sr_nat.c --*/
+struct sr_nat_mapping *sr_nat_lookup_internal(struct sr_nat *nat,
+  uint32_t ip_int, uint16_t aux_int, sr_nat_mapping_type type );
+  struct sr_nat_mapping *sr_nat_lookup_external(struct sr_nat *nat,
+      uint16_t aux_ext, sr_nat_mapping_type type );
 
 /* custom nat methods */
-pkt_direction get_pkt_direction(struct sr_instance* sr, uint32_t dest_ip, uint32_t src_ip);
+pkt_path get_pkt_direction(struct sr_instance* sr, uint32_t dest_ip, uint32_t src_ip);
 void handle_nat_icmp_incoming(struct sr_instance* sr, unsigned int len, uint8_t * packet,
   char* interface);
-  void handle_nat_icmp_outgoing(struct sr_instance* sr, unsigned int len, uint8_t * packet,
-    char* interface);
+void handle_nat_icmp_outgoing(struct sr_instance* sr, unsigned int len, uint8_t * packet,
+  char* interface);
+void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t *
+  packet/* lent */, char* interface/* lent */);
 void handle_nat_icmp(struct sr_instance* sr, unsigned int len, uint8_t * packet/* lent */, char* interface, pkt_path direction);
 #endif /* SR_ROUTER_H */

@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     char *logfile = 0;
     struct sr_instance sr;
     /* nat variables */
-    unsigned int mode = 0; //nat is mode = 1
+    unsigned int mode = 0; /* nat is mode = 1 */
     unsigned int icmp_query_timeout = 60;
     unsigned int tcp_establish_timeout = 7440;
     unsigned int tcp_transit_timeout = 300;
@@ -134,14 +134,12 @@ int main(int argc, char **argv)
       nat.tcp_transit_timeout = tcp_transit_timeout;
       nat.tcp_establish_timeout = tcp_establish_timeout;
     }
+    memset(nat.port_array, 0, MAX_ICMP_ID_NUMBER);
+    memset(nat.icmp_id_array, 0, MAX_ICMP_ID_NUMBER);
     sr.nat = nat;
     sr.mode = mode;
-    
-    memset(sr.nat->port_array, 0, MAX_PORT_NUMBER);
-    memset(sr.nat->icmp_id_array, 0, MAX_ICMP_ID_NUMBER);
-    /* idea here is to have nat linked back to sr so we can access sr
-    by just passing nat, this idea may not work out */
-    //sr.nat->sr = &sr;
+
+
 
     /* -- set up routing table from file -- */
     if(template == NULL) {
