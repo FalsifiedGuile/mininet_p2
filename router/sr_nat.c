@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <assert.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "sr_arpcache.h"
 #include "sr_if.h"
@@ -129,7 +130,6 @@ struct sr_nat_mapping *sr_nat_insert_mapping(struct sr_nat *nat,
   /* handle insert here, create a mapping, and then return a copy of it */
   struct sr_nat_mapping *mapping = NULL;
   struct sr_nat_mapping *mapping_copy = NULL;
-  struct sr_rt *lpm = NULL;
   time_t curtime = time(NULL);
 
   mapping = malloc(sizeof(struct sr_nat_mapping));
@@ -144,6 +144,9 @@ struct sr_nat_mapping *sr_nat_insert_mapping(struct sr_nat *nat,
   /* set external */
   mapping->ip_ext = ip_ext;
   mapping->aux_ext = aux_ext;
+
+  mapping->next = nat->mappings;
+  nat->mappings = mapping;
 
   mapping_copy = malloc(sizeof(struct sr_nat_mapping));
 	memcpy(mapping_copy, mapping, sizeof(struct sr_nat_mapping));

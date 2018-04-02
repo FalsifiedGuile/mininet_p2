@@ -4,6 +4,7 @@
 
 #define MIN_PORT 1024
 #define MAX_PORT_NUMBER 48127
+#define MIN_ICMP_ID_NUMBER 256
 #define MAX_ICMP_ID_NUMBER 65535
 
 
@@ -50,11 +51,11 @@ struct sr_nat {
       same idea with icmp_id_array
   */
 
-  uint16_t port_array[MAX_PORT_NUMBER];
-  unsigned int used_port_marker;
+  uint8_t port_array[MAX_PORT_NUMBER];
+  uint16_t used_port_marker;
 
-  uint16_t icmp_id_array[MAX_ICMP_ID_NUMBER];
-  unsigned int used_icmp_id_marker;
+  uint8_t icmp_id_array[MAX_ICMP_ID_NUMBER];
+  uint16_t used_icmp_id_marker;
 
 
   /* threading */

@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 
     printf("Using %s\n", VERSION_INFO);
 
-    while ((c = getopt(argc, argv, "hs:v:p:u:t:r:l:T:")) != EOF)
+    while ((c = getopt(argc, argv, "hns:v:p:u:t:r:l:T:I:E:R:")) != EOF)
     {
         switch (c)
         {
@@ -129,12 +129,15 @@ int main(int argc, char **argv)
     sr_init_instance(&sr);
 
     /* -- set up nat --*/
+    
     if (mode == 1){
       nat.icmp_query_timeout = icmp_query_timeout;
       nat.tcp_transit_timeout = tcp_transit_timeout;
       nat.tcp_establish_timeout = tcp_establish_timeout;
     }
     memset(nat.port_array, 0, MAX_ICMP_ID_NUMBER);
+    nat.used_icmp_id_marker = MIN_ICMP_ID_NUMBER;
+    nat.used_port_marker = MIN_PORT;
     memset(nat.icmp_id_array, 0, MAX_ICMP_ID_NUMBER);
     sr.nat = nat;
     sr.mode = mode;

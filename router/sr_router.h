@@ -107,6 +107,7 @@ void handle_nat_icmp_incoming(struct sr_instance* sr, unsigned int len, uint8_t 
   char* interface);
 void handle_nat_icmp_outgoing(struct sr_instance* sr, unsigned int len, uint8_t * packet,
   char* interface);
+uint16_t generate_valid_aux_ext (struct sr_nat* sr);
 void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t *
   packet/* lent */, char* interface/* lent */);
 void handle_nat_icmp(struct sr_instance* sr, unsigned int len, uint8_t * packet/* lent */, char* interface, pkt_path direction);

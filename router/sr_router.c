@@ -84,7 +84,6 @@ void sr_handlepacket(struct sr_instance* sr,
   assert(interface);
 
   uint16_t pkt_type = ethertype(packet);
-
   if(pkt_type == ethertype_arp){
     struct sr_arp_hdr *arp_hdr = 0;
     struct sr_if * dest_interface = 0;
@@ -104,8 +103,10 @@ void sr_handlepacket(struct sr_instance* sr,
   }
   if(pkt_type == ethertype_ip){
     if (sr->mode == 0){
+      printf("handling non-nat packet\n");
       handle_ip_request(sr,len,packet,interface);
     } else if (sr->mode == 1){
+      printf("handling nat packet\n");
       handle_nat_ip_request(sr,len,packet,interface);
     } else{
       printf("Error invalid mode variable of %d\n", sr->mode);
@@ -121,6 +122,8 @@ void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t *
   sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) p;
 
   struct sr_if* dest_interface = get_interface(sr, ip_header->ip_dst);
+  printf("--where the ip packet is heading to--\n" );
+  print_addr_ip_int(ntohl(ip_header->ip_dst));
   /*Packet is destined to a router interface*/
   uint8_t ip_type = ip_protocol(p);
   pkt_path direction = get_pkt_direction(sr, ip_header->ip_dst, ip_header->ip_src);
@@ -130,6 +133,7 @@ void handle_nat_ip_request(struct sr_instance* sr, unsigned int len, uint8_t *
   }
   if(ip_type == ip_protocol_icmp){
     /* handle_nat_icmp stuff */
+    printf("handle nat_ip_protocol_icmp\n");
     handle_nat_icmp(sr, len, packet, interface, direction);
   } else if (ip_type == ip_protocol_tcp){
     /* handle_nat_tcp */
@@ -155,16 +159,27 @@ pkt_path get_pkt_direction(struct sr_instance* sr, uint32_t dest_ip, uint32_t sr
   /* do something */
   /* check if destination ip matches NAT eth2 */
   struct sr_if *eth2 = NULL;
+  int eth1 = -1;
   eth2 = sr_get_interface(sr, "eth2");
   if (dest_ip == eth2->ip){
+    printf("pkt_incoming\n");
     return pkt_incoming;
   } else {
     struct sr_rt* src_entry = longest_pf_match(src_ip, sr);
     /* check if actually outgoing */
     struct sr_rt* dest_entry = longest_pf_match(dest_ip, sr);
-    if (src_entry && !dest_entry){
+    if (strncmp(dest_entry->interface, "eth1", 4) == 0) {
+			eth1 = 0;
+		}
+    if (src_entry && eth1 != 0){
+      printf("pkt_outgoing\n");
+      printf("--dest--\n" );
+      print_addr_ip_int(ntohl(dest_ip));
+      printf("--src--\n" );
+      print_addr_ip_int(ntohl(src_ip));
       return pkt_outgoing;
     } else if (src_entry && dest_entry){
+      printf("pkt_inner\n");
       return pkt_inner;
     }
   }
@@ -181,16 +196,29 @@ void handle_nat_icmp(struct sr_instance* sr, unsigned int len,
 
     switch(direction){
       case pkt_incoming:
+        printf("handle_nat_icmp_incoming --\n" );
         handle_nat_icmp_incoming(sr, len, packet, interface);
         break;
       case pkt_outgoing:
+        printf("handle_nat_icmp_outgoing --\n" );
+        print_addr_ip_int(ntohl(ip_header->ip_dst));
         handle_nat_icmp_outgoing(sr, len, packet, interface);
+
+        break;
+      default :
         break;
     }
     if (direction != pkt_inner){
       ip_header->ip_sum = 0;
       ip_header->ip_sum = cksum(ip_header, sizeof(struct sr_ip_hdr));
     }
+
+    printf("handling the new ip request\n");
+    print_addr_ip_int(ntohl(ip_header->ip_src));
+    print_addr_ip_int(ntohl(ip_header->ip_dst));
+
+
+
     handle_ip_request(sr, len, packet, interface);
 }
 
@@ -199,24 +227,88 @@ void handle_nat_icmp_incoming(struct sr_instance* sr, unsigned int len, uint8_t 
     uint8_t* p = (packet + sizeof(sr_ethernet_hdr_t));
     sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) p;
     sr_icmp_hdr_t* icmp_header = (sr_icmp_hdr_t*)(packet + sizeof(sr_ip_hdr_t) + sizeof(sr_ethernet_hdr_t));
+    printf("sr_nat_mapping lookup --\n" );
+    printf("incoming icmp id %d\n", icmp_header->icmp_id);
+    print_addr_ip_int(ntohl(icmp_header->icmp_id));
     struct sr_nat_mapping *nat_lookup = sr_nat_lookup_external(&(sr->nat), icmp_header->icmp_id, nat_mapping_icmp);
-    if (!nat_lookup){
+    printf("modify icmp header --\n" );
+    if (nat_lookup){
       if(icmp_header->icmp_type == 0)
       ip_header->ip_dst = nat_lookup->ip_int;
       icmp_header->icmp_id = nat_lookup->aux_int;
+      printf("set the required things --\n" );
       icmp_header->icmp_sum = 0;
       icmp_header->icmp_sum = cksum(icmp_header, sizeof(sr_icmp_t3_hdr_t));
     }
+    if(!nat_lookup){
+        printf("didnt find anything --\n" );
+    }
+
 }
 
 void handle_nat_icmp_outgoing(struct sr_instance* sr, unsigned int len, uint8_t * packet,
   char* interface){
+    printf("original outgoing packet\n");
+    print_hdr_ip(packet);
     uint8_t* p = (packet + sizeof(sr_ethernet_hdr_t));
     sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) p;
     sr_icmp_hdr_t* icmp_header = (sr_icmp_hdr_t*)(packet + sizeof(sr_ip_hdr_t) + sizeof(sr_ethernet_hdr_t));
-    /* struct sr_nat_mapping *nat_lookup = sr_nat_lookup_internal(&(sr->nat), icmp_header->icmp_id, );
-     if null add insert it to NAT mapping
-     if !null modify ip_dst, id, and ip_sum*/
+    struct sr_nat_mapping *nat_lookup = sr_nat_lookup_internal(&(sr->nat), ip_header->ip_src,  icmp_header->icmp_id, nat_mapping_icmp);
+     /*if null add insert it to NAT mapping
+     if !null modify ip_src, id, and ip_sum*/
+     if (!nat_lookup){
+       printf("creating new nat\n");
+       uint16_t aux_ext = generate_valid_aux_ext(&(sr->nat));
+       if (aux_ext < 0){
+         printf("ERROR no avalible ports found via generate_valid_aux_ext \n");
+       }
+       struct sr_if *externalIf = sr_get_interface(sr, "eth2");
+
+       printf("real ip_dst --\n" );
+       print_addr_ip_int(ntohl(ip_header->ip_dst));
+       uint32_t ip_ext = externalIf->ip;
+       print_addr_ip_int(ntohl(ip_ext));
+       nat_lookup = sr_nat_insert_mapping(&(sr->nat), ip_header->ip_src, icmp_header->icmp_id,
+        ip_ext, aux_ext, nat_mapping_icmp);
+        printf("inserted %d\n", aux_ext);
+     } else {
+       printf("nat found!\n");
+       nat_lookup->last_updated = time(NULL);
+     }
+     printf("ip_src original %d\n", ip_header->ip_src );
+     print_addr_ip_int(ntohl(ip_header->ip_src));
+     ip_header->ip_src = nat_lookup->ip_ext;
+     printf("ip_src updated %d\n", ip_header->ip_src );
+     print_addr_ip_int(ntohl(ip_header->ip_src));
+     icmp_header->icmp_id = nat_lookup->aux_ext;
+     if (icmp_header->icmp_id == 3){
+       icmp_header->icmp_sum = 0;
+       icmp_header->icmp_sum = cksum(icmp_header, sizeof(sr_icmp_t3_hdr_t));
+     }
+     printf("new icmp id\n" );
+     print_addr_ip_int(ntohl(icmp_header->icmp_id));
+    return;
+}
+
+uint16_t generate_valid_aux_ext (struct sr_nat* sr){
+  /* check if current marker + 1 is within bounds and useable */
+  uint16_t no_valid_icmp_avalible_chker = sr->used_icmp_id_marker;
+
+  while(1){
+    sr->used_icmp_id_marker++;
+    /* check if there is no avalible ports */
+    if (sr->used_icmp_id_marker == no_valid_icmp_avalible_chker){
+        return -1;
+    }
+    if (sr->used_icmp_id_marker == MAX_ICMP_ID_NUMBER){
+      sr->used_icmp_id_marker = MIN_ICMP_ID_NUMBER;
+    }
+    if (sr->icmp_id_array[sr->used_icmp_id_marker] == 0){
+      sr->icmp_id_array[sr->used_icmp_id_marker] = 1;
+      return sr->used_icmp_id_marker;
+    }
+  }
+
 }
 void router_arp_reply(struct sr_instance* sr,
           uint8_t * packet/* lent */,
@@ -306,9 +398,11 @@ void handle_ip_request(struct sr_instance* sr, unsigned int len, uint8_t * packe
 
         struct sr_if* dest_interface = get_interface(sr, ip_header->ip_dst);
         /*Packet is destined to a router interface*/
+
         if(dest_interface){
+          printf("is router interface\n");
           uint8_t ip_type = ip_protocol(p);
-          printf("%d", ip_type);
+          printf("ip type %d \n", ip_type);
           if(ip_type == ip_protocol_icmp){
             printf("ICMP Request.\n");
             sr_icmp_hdr_t* icmp_header = (sr_icmp_hdr_t*)(packet + sizeof(sr_ip_hdr_t) + sizeof(sr_ethernet_hdr_t));

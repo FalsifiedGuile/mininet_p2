@@ -40,7 +40,6 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
 
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req){
   time_t now = time(NULL);
-  printf("handling arp req\n --------------");
   if (difftime(now, req->sent) > 1.0){
     if (req->times_sent >= 5){
        /* mMybe over allocation */
@@ -54,7 +53,6 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req){
        }
       sr_arpreq_destroy(&(sr->cache), req);
     } else {
-      printf("sending arp request------\n");
       struct sr_if *dest_if = 0;
       dest_if = sr_get_interface(sr, req->packets->iface);
 
